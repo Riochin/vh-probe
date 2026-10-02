@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>vh probe</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 ui-monospace, Menlo, monospace; background: #f4f4f5; color: #111; }
+  /* 測るための見えない箱 */
+  .m { position: absolute; top: 0; left: -10px; width: 1px; visibility: hidden; }
+  #vh { height: 100vh; } #svh { height: 100svh; } #lvh { height: 100lvh; } #dvh { height: 100dvh; }
+  #panel { position: fixed; top: 0; left: 0; right: 0; z-index: 2; background: #111; color: #fff; padding: 10px 16px; }
+  #panel table { border-collapse: collapse; width: 100%; }
+  #panel td { padding: 1px 0; }
+  #panel td:last-child { text-align: right; }
+  .changed { color: #facc15; }
+  #ua { font-size: 11px; color: #a1a1aa; word-break: break-all; margin-top: 4px; }
+  /* ヒーローと同じ形: h-svh の箱の下端から absolute で吊るした印 */
+  #hero { position: relative; height: 100svh; background: linear-gradient(#bfdbfe, #1e3a8a); }
+  #hero .cue { position: absolute; bottom: 4rem; left: 50%; transform: translateX(-50%); background: #ef4444; color: #fff; padding: 8px 12px; border-radius: 999px; }
+  #log { padding: 16px; }
+  #log h2 { font-size: 14px; margin: 0 0 8px; }
+  #log ol { margin: 0; padding-left: 20px; }
+  .filler { height: 200vh; padding: 16px; color: #71717a; }
+</style>
+</head>
+<body>
+<div class="m" id="vh"></div><div class="m" id="svh"></div><div class="m" id="lvh"></div><div class="m" id="dvh"></div>
+
+<div id="panel">
+  <table id="vals"></table>
+  <div id="ua"></div>
+</div>
+
+<div id="hero"><div class="cue">100svh の下端 − 4rem</div></div>
+
+<div id="log">
+  <h2>変化の記録 (新しい順)</h2>
+  <ol id="entries"></ol>
+</div>
+<div class="filler">↓ スクロールしてツールバーを出し入れしてください</div>
+
+<script>
+  const KEYS = ["vh", "svh", "lvh", "dvh", "innerHeight", "visualViewport", "clientHeight", "screen.height"];
+  let prev = {};
+
+  function read() {
+    const box = (id) => Math.round(document.getElementById(id).getBoundingClientRect().height * 10) / 10;
+    return {
+      vh: box("vh"),
+      svh: box("svh"),
+      lvh: box("lvh"),
+      dvh: box("dvh"),
+      innerHeight: window.innerHeight,
+      visualViewport: window.visualViewport ? Math.round(window.visualViewport.height * 10) / 10 : "-",
+      clientHeight: document.documentElement.clientHeight,
+      "screen.height": screen.height,
+    };
+  }
+
+  function render(v, changed) {
+    document.getElementById("vals").innerHTML = KEYS.map((k) =>
+      `<tr class="${changed.includes(k) ? "changed" : ""}"><td>${k}</td><td>${v[k]}</td></tr>`
+    ).join("");
+  }
+
+  function tick() {
+    const v = read();
+    const changed = KEYS.filter((k) => prev[k] !== undefined && prev[k] !== v[k]);
+    if (changed.length || !prev.vh) {
+      render(v, changed);
+      if (changed.length) {
+        const li = document.createElement("li");
+        const t = new Date().toLocaleTimeString();
+        li.textContent = `${t} scrollY=${Math.round(scrollY)} ` + changed.map((k) => `${k}: ${prev[k]}→${v[k]}`).join(", ");
+        const ol = document.getElementById("entries");
+        ol.prepend(li);
+        while (ol.children.length > 30) ol.lastChild.remove();
+      }
+      prev = v;
+    }
+    requestAnimationFrame(tick);
+  }
+
+  document.getElementById("ua").textContent = navigator.userAgent;
+  tick();
+</script>
+</body>
+</html>
